@@ -1,11 +1,11 @@
 [package]
 name = "mock-ellipticoin"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Mason Fischer <mason@kissr.co>"]
 description = "A framework for testing Ellipticoin smart contracts"
 license = "MIT"
 
 [dependencies]
-wasm-rpc = { path = "../rust-wasm-rpc/wasm-rpc" }
-ellipticoin = { path = "../rust-ellipticoin"}
-secp256k1 = "0.10.0"
+wasm-rpc = "0.2.12"
+wasm-rpc-macros = "0.2.12"
+ellipticoin = "0.1.4"
