@@ -4,9 +4,13 @@ extern crate wasm_rpc_macros;
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 pub use wasm_rpc::{Bytes, FromBytes, ToBytes, Value};
 pub use wasm_rpc_macros::export;
 
+thread_local!(static CALL_MOCKS: RefCell<HashMap<(Vec<u8>, &'static str),  &'static dyn Fn(Vec<Value>) -> (u32, Value)>> = RefCell::new(HashMap::new()));
+thread_local!(static CONTRACT_ADDRESS: RefCell<Vec<u8>> = RefCell::new(Vec::new()));
+thread_local!(static CALLER: RefCell<Vec<u8>> = RefCell::new(Vec::new()));
 thread_local!(static SENDER: RefCell<Vec<u8>> = RefCell::new(Vec::new()));
 thread_local!(static BLOCK_WINNER: RefCell<Vec<u8>> = RefCell::new(Vec::new()));
 thread_local!(static BLOCK_NUMBER: RefCell<u64> = RefCell::new(0));
@@ -14,6 +18,14 @@ thread_local!(static MEMORY: RefCell<BTreeMap<Vec<u8>, Vec<u8>>> = RefCell::new(
 thread_local!(static STORAGE: RefCell<BTreeMap<Vec<u8>, Vec<u8>>> = RefCell::new(BTreeMap::new()));
 
 pub mod error;
+
+pub fn set_contract_address(contract_address: Vec<u8>) {
+    CONTRACT_ADDRESS.with(|contract_address_cell| contract_address_cell.replace(contract_address));
+}
+pub fn set_caller(caller: Vec<u8>) {
+    CALLER.with(|caller_cell| caller_cell.replace(caller));
+}
+
 
 pub fn set_sender(sender: Vec<u8>) {
     SENDER.with(|sender_cell| sender_cell.replace(sender));
@@ -63,6 +75,14 @@ pub fn set_storage<K: ToBytes, V: ToBytes>(key: K, value: V) {
     })
 }
 
+pub fn contract_address() -> Vec<u8> {
+    CONTRACT_ADDRESS.with(|contract_address_cell| contract_address_cell.borrow().to_vec())
+}
+
+pub fn caller() -> Vec<u8> {
+    CALLER.with(|caller_cell| caller_cell.borrow().to_vec())
+}
+
 pub fn sender() -> Vec<u8> {
     SENDER.with(|sender_cell| sender_cell.borrow().to_vec())
 }
@@ -75,11 +95,25 @@ pub fn block_number() -> u64 {
     BLOCK_NUMBER.with(|block_number_cell| *block_number_cell.borrow())
 }
 
+pub fn set_mock_call(
+    contract_address: Vec<u8>,
+    function_name: &'static str,
+    function: &'static dyn Fn(Vec<Value>) -> (u32, Value)
+    ) {
+    CALL_MOCKS.with(|state_cell| {
+        let mut state = state_cell.borrow_mut();
+        state.insert((contract_address, function_name), function);
+    })
+}
+
 pub fn call(
-    _code: Vec<u8>,
-    _method: String,
-    _params: Vec<u8>,
-    _storage_context: Vec<u8>,
-) -> Vec<u8> {
-    unreachable!();
+    contract_address: Vec<u8>,
+    function: &str,
+    arguments: Vec<Value>,
+) -> (u32, Value) {
+    CALL_MOCKS.with(|call_mocks_cell| {
+        let call_mocks = &*call_mocks_cell.borrow();
+        let f = call_mocks.get(&(contract_address, function)).expect(&format!("{} not found", function));
+        f(arguments)
+    })
 }
