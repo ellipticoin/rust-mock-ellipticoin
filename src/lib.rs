@@ -3,9 +3,8 @@ extern crate wasm_rpc;
 extern crate wasm_rpc_macros;
 
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::collections::HashMap;
-pub use wasm_rpc::{Bytes, FromBytes, ToBytes, Value};
+pub use wasm_rpc::{abort, Bytes, FromBytes, ToBytes, Value, error, BTreeMap, value};
 pub use wasm_rpc_macros::export;
 
 thread_local!(static CALL_MOCKS: RefCell<HashMap<(Vec<u8>, &'static str),  &'static dyn Fn(Vec<Value>) -> (u32, Value)>> = RefCell::new(HashMap::new()));
@@ -16,8 +15,6 @@ thread_local!(static BLOCK_WINNER: RefCell<Vec<u8>> = RefCell::new(Vec::new()));
 thread_local!(static BLOCK_NUMBER: RefCell<u64> = RefCell::new(0));
 thread_local!(static MEMORY: RefCell<BTreeMap<Vec<u8>, Vec<u8>>> = RefCell::new(BTreeMap::new()));
 thread_local!(static STORAGE: RefCell<BTreeMap<Vec<u8>, Vec<u8>>> = RefCell::new(BTreeMap::new()));
-
-pub mod error;
 
 pub fn set_contract_address(contract_address: Vec<u8>) {
     CONTRACT_ADDRESS.with(|contract_address_cell| contract_address_cell.replace(contract_address));
